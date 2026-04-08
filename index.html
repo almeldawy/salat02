@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al-Salat Pro Max - Dashboard Spirituel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Amiri:wght@400;700&display=swap');
+
+        :root {
+            --accent: #0ea5e9;
+        }
+
+        .dark {
+            --bg-color: #020617;
+            --card-bg: rgba(15, 23, 42, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.05);
+        }
+
+        .light {
+            --bg-color: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --border: rgba(15, 23, 42, 0.1);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            transition: background-color 0.4s ease, color 0.4s ease;
+            background-image: radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.1) 0%, transparent 50%);
+            background-attachment: fixed;
+            margin: 0;
+        }
+
+        .arabic-text { font-family: 'Amiri', serif; }
+
+        .glass {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .active-card {
+            border: 2px solid var(--accent);
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, transparent 100%);
+        }
+
+        .calendar-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid var(--accent);
+        }
+
+        /* Amélioration visuelle pour le mode clair */
+        .light .calendar-header { background-color: #f1f5f9; }
+        .light .calendar-row { background-color: #ffffff; color: #334155; }
+        .light .calendar-row:nth-child(even) { background-color: #f8fafc; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <nav class="sticky top-0 z-50 glass border-b border-white/5 px-6 py-3 flex justify-between items-center mb-6">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center text-white shadow-lg shadow-sky-500/30">
+                <i class="fas fa-kaaba"></i>
+            </div>
+            <span class="font-bold tracking-tight hidden md:block">Al-Salat <span class="text-sky-500">Pro Max</span></span>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button onclick="toggleTheme()" class="w-10 h-10 rounded-full glass flex items-center justify-center hover:bg-sky-500/10 transition-colors">
+                <i id="theme-icon" class="fas fa-moon text-sky-500"></i>
+            </button>
+            <button onclick="initGeo()" class="w-10 h-10 rounded-full glass flex items-center justify-center hover:bg-sky-500/10 transition-colors" title="Ma position">
+                <i class="fas fa-location-crosshairs text-sky-500"></i>
+            </button>
+            <button onclick="openModal('settings')" class="w-10 h-10 rounded-full glass flex items-center justify-center hover:bg-sky-500/10 transition-colors">
+                <i class="fas fa-cog text-slate-400"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4">
+        <!-- Dashboard Header -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="lg:col-span-2 glass rounded-[2.5rem] p-8 flex flex-col justify-center items-center md:items-start relative overflow-hidden">
+                <div id="live-clock" class="text-6xl md:text-7xl font-black tracking-tighter mb-2">00:00:00</div>
+                <div class="flex flex-wrap items-center gap-4">
+                    <div id="gregorian-date" class="bg-sky-500/10 text-sky-500 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-widest">-- --- ----</div>
+                    <div id="hijri-date" class="text-2xl text-slate-400 flex gap-2 items-center">
+                        <span id="h-day">--</span>
+                        <span id="h-month" class="arabic-text">----</span>
+                        <span id="h-year">----</span>
+                    </div>
+                </div>
+                <div class="mt-6 flex items-center gap-2 text-sm text-slate-500 bg-slate-500/5 px-4 py-2 rounded-full border border-white/5">
+                    <i class="fas fa-map-marker-alt text-red-500"></i>
+                    <span id="location-text">Position non définie</span>
+                </div>
+            </div>
+
+            <div class="glass rounded-[2.5rem] p-6 flex flex-col items-center justify-center text-center bg-gradient-to-br from-sky-500/10 to-transparent">
+                <span class="text-[10px] uppercase font-bold text-sky-500 mb-2 tracking-[0.2em]">Prochaine Prière</span>
+                <h3 id="next-prayer-name" class="text-3xl font-black mb-1">...</h3>
+                <div id="countdown-timer" class="text-2xl font-mono font-bold text-slate-400">00:00:00</div>
+            </div>
+        </div>
+
+        <!-- Prayer Times Grid -->
+        <div id="prayer-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10"></div>
+
+        <!-- Night Calculations & Calendar Access -->
+        <div class="flex flex-col lg:flex-row gap-6 mb-12">
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="glass rounded-3xl p-6 flex items-center justify-between border-l-4 border-indigo-500">
+                    <div>
+                        <p class="text-xs text-slate-500 font-bold uppercase mb-1">Milieu de Nuit</p>
+                        <p id="midnight-time" class="text-2xl font-bold">--:--</p>
+                    </div>
+                    <i class="fas fa-moon text-3xl text-indigo-500/20"></i>
+                </div>
+                <div class="glass rounded-3xl p-6 flex items-center justify-between border-l-4 border-purple-500">
+                    <div>
+                        <p class="text-xs text-slate-500 font-bold uppercase mb-1">Dernier Tiers</p>
+                        <p id="last-third-time" class="text-2xl font-bold">--:--</p>
+                    </div>
+                    <i class="fas fa-star text-3xl text-purple-500/20"></i>
+                </div>
+            </div>
+
+            <button onclick="openModal('calendar')" class="lg:w-64 glass rounded-3xl p-6 flex flex-col items-center justify-center gap-2 hover:bg-sky-500/5 transition-colors group">
+                <i class="fas fa-calendar-alt text-2xl group-hover:text-sky-500 transition-colors"></i>
+                <span class="font-bold text-sm">Calendrier Mensuel</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="modal-settings" class="fixed inset-0 z-[100] hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass w-full max-w-md rounded-[2rem] p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">Paramètres</h2>
+                <button onclick="closeModal('settings')" class="text-slate-500 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-6">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-3 block tracking-widest">Ville (Recherche)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="city-input" placeholder="Ex: Paris, FR" class="flex-1 bg-slate-500/10 border border-white/10 rounded-xl px-4 py-2 outline-none focus:border-sky-500 transition-colors text-white">
+                        <button onclick="manualSearch()" class="bg-sky-500 px-4 py-2 rounded-xl font-bold text-white">OK</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-3 block tracking-widest">Ajustements (Minutes)</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <!-- Ajustements Inputs Dynamiques -->
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[9px] text-center font-bold">Fajr</span>
+                            <input type="number" id="adj-fajr" class="bg-slate-500/10 p-2 rounded-lg text-center text-xs">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[9px] text-center font-bold">Dhuhr</span>
+                            <input type="number" id="adj-dhuhr" class="bg-slate-500/10 p-2 rounded-lg text-center text-xs">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[9px] text-center font-bold">Asr</span>
+                            <input type="number" id="adj-asr" class="bg-slate-500/10 p-2 rounded-lg text-center text-xs">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[9px] text-center font-bold">Maghrib</span>
+                            <input type="number" id="adj-maghrib" class="bg-slate-500/10 p-2 rounded-lg text-center text-xs">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[9px] text-center font-bold">Isha</span>
+                            <input type="number" id="adj-isha" class="bg-slate-500/10 p-2 rounded-lg text-center text-xs">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="saveSettings()" class="w-full mt-8 bg-sky-500 py-3 rounded-2xl font-bold text-white shadow-lg shadow-sky-500/20">Enregistrer</button>
+        </div>
+    </div>
+
+    <div id="modal-calendar" class="fixed inset-0 z-[100] hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass w-full max-w-4xl max-h-[85vh] overflow-hidden rounded-[2rem] flex flex-col">
+            <div class="p-6 border-b border-white/5 flex justify-between items-center bg-sky-500/5">
+                <h2 class="text-xl font-bold">Horaires du Mois (Ligue Islamique Mondiale)</h2>
+                <button onclick="closeModal('calendar')" class="text-slate-500 hover:text-red-500 transition-colors"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="overflow-auto p-4" id="calendar-body">
+                <p class="text-center p-10 text-slate-500">Chargement...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full opacity-0 translate-y-10 transition-all duration-500 z-[200] text-sm font-bold border-t-2 border-sky-500"></div>
+
+    <script>
+        let state = {
+            lat: 48.8566, 
+            lon: 2.3522,
+            city: null,
+            timings: null,
+            dates: null,
+            nextPrayer: null,
+            adjustments: JSON.parse(localStorage.getItem('prayer_adj')) || { Fajr:0, Dhuhr:0, Asr:0, Maghrib:0, Isha:0 },
+            theme: localStorage.getItem('theme') || 'dark'
+        };
+
+        const PRAYER_KEYS = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"];
+        const PRAYER_INFO = {
+            Fajr: { fr: "Fajr", ar: "الفجر", icon: "fa-cloud-moon" },
+            Sunrise: { fr: "Chourouk", ar: "الشروق", icon: "fa-mountain-sun" },
+            Dhuhr: { fr: "Dhuhr", ar: "الظهر", icon: "fa-sun" },
+            Asr: { fr: "Asr", ar: "العصر", icon: "fa-cloud-sun" },
+            Maghrib: { fr: "Maghrib", ar: "المغرب", icon: "fa-moon" },
+            Isha: { fr: "Isha", ar: "العشاء", icon: "fa-star-and-crescent" }
+        };
+
+        window.onload = () => {
+            applyTheme();
+            startClock();
+            initGeo();
+            fillSettingsInputs();
+        };
+
+        function toggleTheme() {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', state.theme);
+            applyTheme();
+        }
+
+        function applyTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if (state.theme === 'dark') {
+                html.className = 'dark';
+                icon.className = 'fas fa-sun text-yellow-400';
+            } else {
+                html.className = 'light';
+                icon.className = 'fas fa-moon text-sky-600';
+            }
+        }
+
+        function initGeo() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => { state.lat = pos.coords.latitude; state.lon = pos.coords.longitude; fetchData(); },
+                    err => { showToast("Localisation par défaut (Paris)."); fetchData(); }
+                );
+            } else { fetchData(); }
+        }
+
+        async function fetchData() {
+            try {
+                // Utilisation de la méthode 3 (Muslim World League)
+                const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${state.lat}&longitude=${state.lon}&method=3`);
+                const data = await res.json();
+                if (data.code === 200) {
+                    state.timings = data.data.timings;
+                    state.dates = data.data.date;
+                    for(let k in state.timings) state.timings[k] = state.timings[k].split(' ')[0];
+                    updateUI();
+                }
+            } catch (e) { showToast("Erreur de connexion."); }
+        }
+
+        function applyAdjust(timeStr, offset) {
+            if (!offset || !timeStr) return timeStr;
+            let [h, m] = timeStr.split(':').map(Number);
+            let d = new Date();
+            d.setHours(h, m + offset, 0);
+            return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+        }
+
+        function updateUI() {
+            if (!state.dates) return;
+            const d = state.dates;
+            
+            // Date Grégorienne
+            const gregDate = new Date(d.timestamp * 1000);
+            document.getElementById('gregorian-date').innerText = gregDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+
+            // Date Hijri
+            document.getElementById('h-day').innerText = d.hijri.day;
+            document.getElementById('h-month').innerText = d.hijri.month.ar;
+            document.getElementById('h-year').innerText = d.hijri.year;
+
+            document.getElementById('location-text').innerText = state.city || `${state.lat.toFixed(2)}, ${state.lon.toFixed(2)}`;
+
+            const grid = document.getElementById('prayer-grid');
+            grid.innerHTML = '';
+            
+            PRAYER_KEYS.forEach(key => {
+                const finalTime = applyAdjust(state.timings[key], state.adjustments[key] || 0);
+                const card = document.createElement('div');
+                card.id = `card-${key}`;
+                card.className = `glass rounded-3xl p-5 flex flex-col items-center justify-center transition-all duration-500`;
+                card.innerHTML = `
+                    <span class="text-[10px] uppercase font-black text-slate-500 mb-2">${PRAYER_INFO[key].fr}</span>
+                    <i class="fas ${PRAYER_INFO[key].icon} text-xl mb-3 text-sky-500"></i>
+                    <div class="text-2xl font-black">${finalTime}</div>
+                    <div class="arabic-text text-xl text-slate-400 opacity-60">${PRAYER_INFO[key].ar}</div>
+                `;
+                grid.appendChild(card);
+            });
+
+            updateCalculations();
+        }
+
+        function updateCalculations() {
+            if (!state.timings) return;
+            const now = new Date();
+            const nowSec = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
+            
+            const list = PRAYER_KEYS.map(k => {
+                const t = applyAdjust(state.timings[k], state.adjustments[k] || 0);
+                return { key: k, sec: toSec(t) };
+            });
+
+            let current = "Isha";
+            list.forEach(item => { if (nowSec >= item.sec) current = item.key; });
+
+            let nextFound = list.find(item => item.sec > nowSec);
+            let nextKey = nextFound ? nextFound.key : "Fajr";
+            let isTomorrow = !nextFound;
+
+            state.nextPrayer = { key: nextKey, sec: toSec(applyAdjust(state.timings[nextKey], state.adjustments[nextKey] || 0)), isTomorrow };
+
+            PRAYER_KEYS.forEach(k => {
+                const el = document.getElementById(`card-${k}`);
+                if (el) k === current ? el.classList.add('active-card') : el.classList.remove('active-card');
+            });
+
+            document.getElementById('next-prayer-name').innerText = PRAYER_INFO[nextKey].fr;
+
+            // Nuits
+            const magSec = toSec(applyAdjust(state.timings.Maghrib, state.adjustments.Maghrib || 0));
+            let fajrSec = toSec(applyAdjust(state.timings.Fajr, state.adjustments.Fajr || 0));
+            if (fajrSec < magSec) fajrSec += 86400;
+
+            const nightDur = fajrSec - magSec;
+            document.getElementById('midnight-time').innerText = fromSec((magSec + (nightDur / 2)) % 86400);
+            document.getElementById('last-third-time').innerText = fromSec((fajrSec - (nightDur / 3)) % 86400);
+        }
+
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('live-clock').innerText = now.toLocaleTimeString('fr-FR', { hour12: false });
+                if (state.nextPrayer) {
+                    const nowSec = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
+                    let diff = state.nextPrayer.sec - nowSec;
+                    if (state.nextPrayer.isTomorrow) diff += 86400;
+                    document.getElementById('countdown-timer').innerText = formatDur(diff);
+                    if (diff === 0) fetchData();
+                }
+            }, 1000);
+        }
+
+        async function manualSearch() {
+            const q = document.getElementById('city-input').value;
+            if (!q) return;
+            try {
+                // Forcer la méthode 3 même en recherche par adresse
+                const res = await fetch(`https://api.aladhan.com/v1/timingsByAddress?address=${encodeURIComponent(q)}&method=3`);
+                const data = await res.json();
+                if (data.code === 200) {
+                    state.lat = data.data.meta.latitude;
+                    state.lon = data.data.meta.longitude;
+                    state.city = q;
+                    state.timings = data.data.timings;
+                    state.dates = data.data.date;
+                    for(let k in state.timings) state.timings[k] = state.timings[k].split(' ')[0];
+                    updateUI(); closeModal('settings');
+                }
+            } catch (e) { showToast("Ville introuvable."); }
+        }
+
+        function saveSettings() {
+            ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"].forEach(k => {
+                const val = document.getElementById(`adj-${k.toLowerCase()}`).value;
+                state.adjustments[k] = parseInt(val) || 0;
+            });
+            localStorage.setItem('prayer_adj', JSON.stringify(state.adjustments));
+            updateUI();
+            showToast("Ajustements enregistrés.");
+            closeModal('settings');
+        }
+
+        function fillSettingsInputs() {
+            ["fajr", "dhuhr", "asr", "maghrib", "isha"].forEach(k => {
+                const key = k.charAt(0).toUpperCase() + k.slice(1);
+                const el = document.getElementById(`adj-${k}`);
+                if (el) el.value = state.adjustments[key] || 0;
+            });
+        }
+
+        function openModal(type) {
+            document.getElementById(`modal-${type}`).classList.remove('hidden');
+            if (type === 'calendar') renderCalendar();
+        }
+        function closeModal(type) { document.getElementById(`modal-${type}`).classList.add('hidden'); }
+
+        async function renderCalendar() {
+            const body = document.getElementById('calendar-body');
+            body.innerHTML = '<p class="text-center p-10 text-slate-500">Génération des horaires...</p>';
+            try {
+                const now = new Date();
+                const res = await fetch(`https://api.aladhan.com/v1/calendar?latitude=${state.lat}&longitude=${state.lon}&method=3&month=${now.getMonth()+1}&year=${now.getFullYear()}`);
+                const data = await res.json();
+                
+                let html = `<table class="w-full text-left text-sm border-separate border-spacing-y-2">
+                    <thead class="calendar-header">
+                        <tr class="text-slate-500 uppercase text-[10px] font-bold">
+                            <th class="px-4 py-4 rounded-tl-xl">Jour</th>
+                            ${PRAYER_KEYS.map((k, i) => `<th class="px-4 py-4 ${i === PRAYER_KEYS.length-1 ? 'rounded-tr-xl':''}">${PRAYER_INFO[k].fr}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>`;
+                
+                data.data.forEach(day => {
+                    const isToday = parseInt(day.date.gregorian.day) === now.getDate();
+                    html += `<tr class="calendar-row ${isToday ? 'bg-sky-500/20' : 'bg-white/5'} rounded-xl transition-all">
+                        <td class="px-4 py-3 font-bold border-l-4 ${isToday ? 'border-sky-500':'border-transparent'}">${day.date.gregorian.day}</td>
+                        ${PRAYER_KEYS.map(k => {
+                            const t = applyAdjust(day.timings[k].split(' ')[0], state.adjustments[k] || 0);
+                            return `<td class="px-4 py-3">${t}</td>`;
+                        }).join('')}
+                    </tr>`;
+                });
+                
+                html += `</tbody></table>`;
+                body.innerHTML = html;
+            } catch(e) { body.innerHTML = '<p class="p-10 text-center text-red-400">Impossible de charger le calendrier.</p>'; }
+        }
+
+        function toSec(t) { const [h,m] = t.split(':').map(Number); return (h * 3600) + (m * 60); }
+        function fromSec(s) { const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60); return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`; }
+        function formatDur(s) {
+            const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s % 60;
+            return [h,m,sec].map(v => v.toString().padStart(2,'0')).join(':');
+        }
+        function showToast(m) {
+            const t = document.getElementById('toast'); t.innerText = m;
+            t.classList.remove('opacity-0', 'translate-y-10');
+            setTimeout(() => t.classList.add('opacity-0', 'translate-y-10'), 3000);
+        }
+    </script>
+</body>
+</html>
